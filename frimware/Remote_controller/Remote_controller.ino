@@ -1,12 +1,22 @@
+/*
+    DIY Arduino ELRS Controller
+    Created by Novosleov https://github.com/NovoselovMilk/Arduino-ELRS-Controller
+*/
+
 #include <EEPROM.h>
 
+/*  Для отладки и проверки верного подключения стиков и кнопок можно раскомментировать строкчку "#define DEBUG" и открыть COM порт со скоростью 9600
+  Sticks AETR(AIL,ELE,THR,RUD) - Значения показаний стиков от 172 до 1811
+  (при движении стика вправо значения должны увеличиваться, влево - уменьшаться, вверх - увеличиваться, вниз - уменьшаться )
+  Trim value (AER) - Значение триммеров от -100 до +100
+*/
 //#define DEBUG
 
-// Отслеживание напряжения однобаночного аккумулятора. При питании от батареек, необходимо закомментировать эту строчку. 
-#define BAT_CONTROL    
+// Отслеживание напряжения однобаночного аккумулятора. При питании от батареек, необходимо закомментировать эту строчку.
+#define BAT_CONTROL
 
 // Расходы по каналам
-#define RATE_AIL    100 
+#define RATE_AIL    100
 #define RATE_ELE    100
 #define RATE_THR    100
 #define RATE_RUD    100
@@ -17,8 +27,8 @@
 #define INV_THR      0
 #define INV_RUD      0
 
-// Пины подключения стиков к аналоговым входам 
-#define PIN_AIL      A0            
+// Пины подключения стиков к аналоговым входам
+#define PIN_AIL      A0
 #define PIN_ELE      A1
 #define PIN_THR      A4
 #define PIN_RUD      A5
@@ -72,7 +82,7 @@
 #define CRSF_FRAME_SIZE_MAX     64
 // Device address & type
 #define RADIO_ADDRESS           0xEA
-// #define ADDR_MODULE             0xEE  //  Crossfire transmitter
+// #define ADDR_MODULE          0xEE  //  Crossfire transmitter
 #define TYPE_CHANNELS           0x16
 
 // Define AUX channel input limite
@@ -90,7 +100,7 @@
 #define ELRS_POWER_COMMAND              0x06
 #define ELRS_BLE_JOYSTIC_COMMAND        17
 #define TYPE_SETTINGS_WRITE             0x2D
-#define ADDR_RADIO                      0xEA 
+#define ADDR_RADIO                      0xEA
 #define port                            Serial
 
 #define PWR_25MW                1
@@ -146,9 +156,9 @@ enum {MIN_AIL = 0, MAX_AIL, MIN_ELE, MAX_ELE, MIN_THR, MAX_THR, MIN_RUD, MAX_RUD
 void setup() {
 
   for (uint8_t i = 0; i < CRSF_MAX_CHANNEL; i++) rcChannels[i] = CRSF_DIGITAL_CHANNEL_MIN;
-  
 
-init_eeprom(); 
+
+  init_eeprom();
 
 #ifdef DEBUG
   Serial.begin(9600);
@@ -176,10 +186,9 @@ init_eeprom();
   } else if (!digitalRead(PIN_RUD_PLUS)) {
     noPulses = true;
   }
-  
-  delay(500);
-
+  delay(1000);
   change_settings_elrs();
+
   tone(PIN_BZZ, 2100, 100);
 }
 
@@ -191,7 +200,8 @@ void loop() {
     last_time = millis();
     dataRead();
     trimer();
-    }
+    print_info();
+  }
   if ((millis() - last_bat_time) >= 10000) {
     last_bat_time = millis();
     bat_control();
@@ -204,9 +214,10 @@ void loop() {
     if (!noPulses) {
       crsfPrepareDataPacket(crsfPacket, rcChannels);
       CrsfWritePacket(crsfPacket, CRSF_PACKET_SIZE);
+      dataRead();
+      trimer();
     }
-    dataRead();
-    trimer();
+
   }
 
 #ifdef BAT_CONTROL
@@ -242,7 +253,6 @@ void trimer() {
 
   if (!digitalRead(PIN_AIL_PLUS) && millis() - last_press >= DEBOUNCE) {
     last_press = millis();
-    Serial.println("PLUS!");
     if (trim_value[TRIM_AIL] <  100) {
       trim_value[TRIM_AIL] += 10;
       EEPROM.write(EE_ADDR_AIL_TRIM, trim_value[TRIM_AIL]);
@@ -293,7 +303,7 @@ void dataRead() {
     }
 
     read_value = (map(read_value, calibrate_value[i * 2], calibrate_value[(i * 2) + 1], 0, 1023)) + trim_value[i] ;
-    //    !inv_flag[i] ? read_value += trim_value[i] : read_value -= trim_value[i];
+
     read_value = constrain(read_value, 0, 1023);
     if (inv_flag[i]) read_value = (~read_value) & 0x3FF;
     read_value = (read_value * (0.01 * rate_value[i])) + (1023 - (1023 * 0.01 * rate_value[i])) / 2;
@@ -301,7 +311,7 @@ void dataRead() {
     rcChannels[i] = map(read_value, 0, 1023, CRSF_DIGITAL_CHANNEL_MIN, CRSF_DIGITAL_CHANNEL_MAX);
   }
 
-  rcChannels[4] = (digitalRead(PIN_CH5)) ? CRSF_DIGITAL_CHANNEL_MIN : CRSF_DIGITAL_CHANNEL_MAX;
+  rcChannels[4] = (!digitalRead(PIN_CH5)) ? CRSF_DIGITAL_CHANNEL_MIN : CRSF_DIGITAL_CHANNEL_MAX;
 }
 
 void bat_control() {
@@ -405,8 +415,8 @@ bool calibrate_sticks() {
   return true;
 }
 
-void init_eeprom(){
-  if (EEPROM.read(EE_ADDR_INIT) != 0xEE) {
+void init_eeprom() {
+  if (EEPROM.read(EE_ADDR_INIT) != EE_INIT) {
     EEPROM.write(EE_ADDR_AIL_TRIM, trim_value[TRIM_AIL]);
     EEPROM.write(EE_ADDR_ELE_TRIM, trim_value[TRIM_ELE]);
     EEPROM.write(EE_ADDR_RUD_TRIM, trim_value[TRIM_RUD]);
@@ -446,6 +456,7 @@ void init_eeprom(){
 
 void change_settings_elrs() {
 
+
   for ( int i = 0 ; i < 4; i++) {
     int16_t read_value = 0;
     uint16_t raw;
@@ -482,6 +493,26 @@ void change_settings_elrs() {
       CrsfWritePacket(crsfCmdPacket, CRSF_CMD_PACKET_SIZE);
     }
   }
+}
+
+void print_info() {
+
+  Serial.print("Sticks AETR - ");
+  Serial.print("\t");
+  for (int i = 0; i < CH_MAX; i++) {
+    Serial.print(rcChannels[i]);
+    Serial.print("\t");
+  }
+
+  Serial.print("Trim values -" );
+  Serial.print("\t");
+  for (int i = 0; i < sizeof(trim_value); i++) {
+    if (i != THR) {
+      Serial.print(trim_value[i]);
+      Serial.print("\t");
+    }
+  }
+  Serial.println();
 }
 
 // crc implementation from CRSF protocol document rev7
