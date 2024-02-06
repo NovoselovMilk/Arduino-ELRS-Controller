@@ -15,10 +15,11 @@
 
 ### Схема передатчика ELRS TX 900MHz
 Ссылка на проект в EasyEDA - "[ELRS TX](https://oshwlab.com/redbanannas/elrs_tx)"
-![TX](schematics/../doc/TX_ELRS.png)
+
+![TX](/schematics/TX_ELRS.png)
 ### Схема приемника ELRS RX PWM4 900MHz
 Ссылка на проект в EasyEDA - "[ELRS RX](https://oshwlab.com/redbanannas/elrs_rx)"
-![RX](schematics/../doc/RX_ELRS.png)
+![RX](/schematics/RX_ELRS.png)
 # Антенны
  Лучше купить готовые антенны, например вот [тут](https://clck.ru/38auKu) или [тут](https://clck.ru/38auNj), но можно и сделать их самостоятельно. Работать будут скорее всего хуже покупных, если у Вас нет специальных приборов для замеров характеристик антенн.
 ## Размеры антенн
@@ -36,6 +37,9 @@
 * Пассивная пищалка - https://clck.ru/38arpu
 
  Для его сборки также необходимы два джойстика(гимбала) и несколько кнопок (см. схему) 
+ ### Пищалку можно подключить через транзистор.
+ Будет громче работать:) Подойдет NPN транзистор 2n3904 ![buzzer_schem](/schematics/buzzer.png)
+
 
 ## ELRS Передатчик
 * ESP32-WROOM-32D - https://clck.ru/38aqnJ
