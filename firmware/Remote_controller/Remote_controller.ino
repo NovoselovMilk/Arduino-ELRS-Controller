@@ -295,14 +295,13 @@ void dataRead() {
     int16_t read_value = 0;
     uint16_t raw;
 
-    if (dir_sticks[i]) read_value = analogRead(input_pins[i]);
+    if (dir_sticks[i]) 
+    read_value = (map(analogRead(input_pins[i]), calibrate_value[i * 2], calibrate_value[(i * 2) + 1], 0, 1023)) + trim_value[i] ;
     else  {
       raw = analogRead(input_pins[i]);
       raw = ~raw & 0x3FF;
-      read_value = raw;
+      read_value = (map(raw, (~calibrate_value[(i * 2) + 1] & 0x3FF), (~calibrate_value[i * 2] & 0x3FF), 0, 1023)) + trim_value[i] ;
     }
-
-    read_value = (map(read_value, calibrate_value[i * 2], calibrate_value[(i * 2) + 1], 0, 1023)) + trim_value[i] ;
 
     read_value = constrain(read_value, 0, 1023);
     if (inv_flag[i]) read_value = (~read_value) & 0x3FF;
@@ -400,9 +399,6 @@ bool calibrate_sticks() {
 
     tone(PIN_BZZ, 2000, 30);
   }
-
-
-
 
 #ifdef DEBUG
   for (int i = 0; i < 8; i++) {
